@@ -1,11 +1,11 @@
 import React from 'react';
 import './App.css';
-
 import {
   BrowserRouter as Router,
   Routes,
   Route
 } from "react-router-dom";
+import myBudget from './budget.json';
 
 import Menu from './Menu/Menu';
 import Hero from './Hero/Hero';
@@ -29,6 +29,7 @@ function App() {
     </div>
   </Router>
   );
+  
 }
 
 export default App;
