@@ -5,7 +5,7 @@ import {
   Routes,
   Route
 } from "react-router-dom";
-import myBudget from './budget.json';
+//import myBudget from './budget.json';
 
 import Menu from './Menu/Menu';
 import Hero from './Hero/Hero';
@@ -33,3 +33,4 @@ function App() {
 }
 
 export default App;
+ 

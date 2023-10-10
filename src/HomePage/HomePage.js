@@ -1,15 +1,18 @@
 import React from 'react';
-import { useEffect } from 'react';
 import axios from 'axios';
+import * as d3j from 'd3';
+import {scaleOrdinal} from 'd3'
 import Chart from 'chart.js/auto';
-
+// import { useEffect } from 'react';
+// import { useEffect } from 'react';
+// import axios from 'axios';
+// import Chart from 'chart.js/auto';
 
 function HomePage() {
 
-    useEffect(() => {
-        var dataSource = {
-            datasets: [
-             {
+    var dataSource = {
+        datasets: [
+            {
                 data: [],
                 backgroundColor: [
                     '#ffcd56',
@@ -21,171 +24,101 @@ function HomePage() {
                     '#FF3333',
                     '#FF9F33',
 
-                ],
-            }
-        ],
-
-            labels: []
+                ],}],
+        labels: []
     };
 
-    function createChart() {
-        var ctx= document.getElementById("myChart").getContext("2d");
-        var myPieChart = new Chart(ctx,{ 
-            type:'pie',
+    React.useEffect(() => {
+        axios.get('http://localhost:3000/budget').then((response) => {
+            console.log(response)
+            for (var i = 0; i < response.data.myBudget.length; i++) {
+                dataSource.datasets[0].data[i] = response.data.myBudget[i].budget;
+                dataSource.labels[i] = response.data.myBudget[i].title;
+            }
+            console.log(response.data.myBudget)
+            createBChart();
+            formDonutChart(response.data.myBudget);
+        });
+      }, []);
+
+    function createBChart() {
+        var ctx = document.getElementById('myChart').getContext('2d');
+        let chartStatus = Chart.getChart("myChart");
+
+        if (chartStatus !== undefined) {
+            chartStatus.destroy();
+        }
+    
+        var myPieChart = new Chart(ctx, {
+            type: 'pie',
             data: dataSource
         });
     }
 
-    function getBudget()
-    { 
-        axios.get('/budget')
-        .then(function(res){
-            console.log(res);
-            var dataa = res.data.Budget.map((data) =>({label : data.title, value : data.budget}));
-            for( var i=0; i< res.data.Budget.length; i++)
-            {
-               dataSource.datasets[0].data[i] = res.data.Budget[i].budget;
-                dataSource.labels[i]=res.data.Budget[i].title;
-            }
-            createChart();
-            // eslint-disable-next-line no-undef
-            change(dataa);
-        });
+    
 
+    function formDonutChart(data) {
+        d3j.select('#d3pie').selectAll('*').remove();
+    
+       
+        const width = 400;
+        const height = 400;
+        const radius = Math.min(width, height) / 2;
+    
+        
+        const svg = d3j.select('#d3pie')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .append('g')
+            .attr('transform', `translate(${width / 2},${height / 2})`);
+    
+    
+        const color = scaleOrdinal()
+            .domain(data.map(d => d.title))
+            .range(dataSource.datasets[0].backgroundColor);
+    
+        // Create a pie chart
+        const pie = d3j.pie()
+            .value(d => d.budget);
+    
+        
+        const arc = d3j.arc()
+            .innerRadius(radius * 0.4) 
+            .outerRadius(radius);
+    
+        
+        const path = svg.selectAll('path')
+            .data(pie(data))
+            .enter()
+            .append('path')
+            .attr('d', arc) 
+            .attr('fill', d => color(d.data.title));
+    
+        
+        path.append('text')
+            .attr('transform', d => `translate(${arc.centroid(d)})`)
+            .attr('dy', '0.35em')
+            .text(d => `${d.data.title}: $${d.data.budget}`); 
+        // Create a legend
+        const legend = svg.selectAll('.legend')
+            .data(data.map(d => d.title))
+            .enter()
+            .append('g')
+            .attr('class', 'legend')
+            .attr('transform', (d, i) => `translate(200, ${i * 20})`);
+    
+        legend.append('rect')
+            .attr('width', 21)
+            .attr('height', 21)
+            .style('fill', d => color(d));
+    
+        legend.append('text')
+            .attr('x', 24)
+            .attr('y', 9)
+            .attr('dy', '.35em')
+            .text(d => d);
     }
-    
-    getBudget();
-     
-    },
-    //createChart();
-var svg = d3.select("body")
-	.append("svg")
-	.append("g")
-
-svg.append("g")
-	.attr("class", "slices");
-svg.append("g")
-	.attr("class", "labels");
-svg.append("g")
-	.attr("class", "lines");
-
-var width = 960,
-    height = 450,
-	radius = Math.min(width, height) / 2;
-
-var pie = d3.layout.pie()
-	.sort(null)
-	.value(function(d) {
-		return d.value;
-	});
-
-var arc = d3.svg.arc()
-	.outerRadius(radius * 0.8)
-	.innerRadius(radius * 0.4);
-
-var outerArc = d3.svg.arc()
-	.innerRadius(radius * 0.9)
-	.outerRadius(radius * 0.9);
-
-svg.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-var key = function(d){ return d.data.label; };
-
-var color = d3.scale.ordinal()
-	.range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
-
-
-function change(data) {
-
-	/* ------- PIE SLICES -------*/
-	var slice = svg.select(".slices").selectAll("path.slice")
-		.data(pie(data), key);
-
-	slice.enter()
-		.insert("path")
-		.style("fill", function(d) { return color(d.data.label); })
-		.attr("class", "slice");
-
-	slice		
-		.transition().duration(1000)
-		.attrTween("d", function(d) {
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				return arc(interpolate(t));
-			};
-		})
-
-	slice.exit()
-		.remove();
-
-	/* ------- TEXT LABELS -------*/
-
-	var text = svg.select(".labels").selectAll("text")
-		.data(pie(data), key);
-
-	text.enter()
-		.append("text")
-		.attr("dy", ".35em")
-		.text(function(d) {
-			return d.data.label;
-		});
-	
-	function midAngle(d){
-		return d.startAngle + (d.endAngle - d.startAngle)/2;
-	}
-
-	text.transition().duration(1000)
-		.attrTween("transform", function(d) {
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				var pos = outerArc.centroid(d2);
-				pos[0] = radius * (midAngle(d2) < Math.PI ? 1 : -1);
-				return "translate("+ pos +")";
-			};
-		})
-		.styleTween("text-anchor", function(d){
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				return midAngle(d2) < Math.PI ? "start":"end";
-			};
-		});
-
-	text.exit()
-		.remove();
-
-	/* ------- SLICE TO TEXT POLYLINES -------*/
-
-	var polyline = svg.select(".lines").selectAll("polyline")
-		.data(pie(data), key);
-	
-	polyline.enter()
-		.append("polyline");
-
-	polyline.transition().duration(1000)
-		.attrTween("points", function(d){
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				var pos = outerArc.centroid(d2);
-				pos[0] = radius * 0.95 * (midAngle(d2) < Math.PI ? 1 : -1);
-				return [arc.centroid(d2), outerArc.centroid(d2), pos];
-			};			
-		});
-	
-	polyline.exit()
-		.remove();
-}; []);
-    
   return (
 
     <div className="page-area">
@@ -248,19 +181,29 @@ function change(data) {
             </p>
         </div>
 
-        <div class="text-box">
-            <h1>Chart</h1>
-            <p>
-                <canvas id="myChart" width="200" height="200"></canvas>
-            </p>
-        </div>
+        <div className="text-box">
+                    <h1> Budget Chart </h1>
+                    <p>
+                        <canvas id="myChart" width="400" height="400"></canvas>
+                    </p>
+                </div>
+                <div id="d3-chart">
+                    <h1>D3JS chart</h1>
+                    <figure id='d3pie'></figure>
+                </div>
 
         
 
     </div>
 
     
+
+    
   );
   }
+
+  // axiosConfig.js
+
+
 
 export default HomePage;
